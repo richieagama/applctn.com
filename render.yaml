@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: keyword-processor
+    env: python
+    buildCommand: |
+      pip install -r requirements.txt
+      cd frontend && npm install && npm run build && cd ..
+      mkdir -p backend/frontend/build
+      cp -r frontend/build/* backend/frontend/build/
+    startCommand: gunicorn backend.app:app
