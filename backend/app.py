@@ -106,6 +106,63 @@ def update_keywords():
         return jsonify({'error': f"Error updating keywords: {str(e)}"}), 500
 
 
+
+# Add this to your backend/app.py file to help debug
+@app.route('/debug-info')
+def debug_info():
+    """Return debugging information about paths and static files."""
+    import os
+    
+    # Get current directory
+    current_dir = os.getcwd()
+    
+    # Check static folder path
+    static_path = os.path.join(current_dir, app.static_folder) if app.static_folder else "No static folder"
+    static_exists = os.path.exists(static_path) if app.static_folder else False
+    
+    # Check if index.html exists
+    index_path = os.path.join(static_path, 'index.html') if app.static_folder else "No static folder"
+    index_exists = os.path.exists(index_path) if app.static_folder else False
+    
+    # List files in static folder if it exists
+    static_files = os.listdir(static_path) if static_exists else []
+    
+    debug_data = {
+        'current_directory': current_dir,
+        'static_folder_setting': app.static_folder,
+        'static_url_path_setting': app.static_url_path,
+        'full_static_path': static_path,
+        'static_folder_exists': static_exists,
+        'index_path': index_path,
+        'index_html_exists': index_exists,
+        'static_files': static_files
+    }
+    
+    return jsonify(debug_data)
+
+
+
+@app.route('/direct-html')
+def direct_html():
+    """Return a simple HTML page directly from the Flask app."""
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Keyword Processor</title>
+    </head>
+    <body>
+        <h1>Keyword Processor</h1>
+        <p>This page is being served directly by Flask!</p>
+        <p>Try to access the <a href="/debug-info">debug info</a> for more details.</p>
+    </body>
+    </html>
+    '''
+    return html
+
+
+
+
 # Error handling for 404 errors
 @app.errorhandler(404)
 def not_found(e):
