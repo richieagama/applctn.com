@@ -30,9 +30,6 @@ output/
 # Node modules
 node_modules/
 
-# React build
-frontend/build/
-
 # IDE files
 .idea/
 .vscode/
