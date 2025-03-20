@@ -4,7 +4,8 @@ services:
     env: python
     buildCommand: |
       pip install -r requirements.txt
-      cd frontend && npm install && npm run build && cd ..
-      mkdir -p backend/frontend/build
-      cp -r frontend/build/* backend/frontend/build/
+      cd frontend && npm install && npm run build || echo "Frontend build failed!!"
+      mkdir -p backend/static
+      cp -r frontend/build/* backend/static/ || echo "Copy failed"
+      ls -la backend/static || echo "Directory not found"
     startCommand: gunicorn backend.app:app

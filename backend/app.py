@@ -6,7 +6,8 @@ import re
 import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-app = Flask(__name__, static_folder='frontend/build', static_url_path='')
+app = Flask(__name__, static_folder='static', static_url_path='')
+
 CORS(app)
 # List of negative keywords
 negative_keywords = [
