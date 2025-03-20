@@ -4,8 +4,26 @@ services:
     env: python
     buildCommand: |
       pip install -r requirements.txt
-      cd frontend && npm install && npm run build || echo "Frontend build failed!!"
+      # Try to build frontend
+      echo "*** Checking if frontend directory exists ***"
+      ls -la
+      echo "*** Checking frontend directory contents ***"
+      ls -la frontend || echo "Frontend directory not found or empty"
+      echo "*** Attempting to build frontend ***"
+      cd frontend && npm install && npm run build && cd ..
+      echo "*** Checking build output ***"
+      ls -la frontend/build || echo "Build directory not found"
+      # Create static directory and copy build files
+      echo "*** Setting up static files ***"
       mkdir -p backend/static
-      cp -r frontend/build/* backend/static/ || echo "Copy failed"
-      ls -la backend/static || echo "Directory not found"
+      # Copy build files if they exist, otherwise create a simple HTML file
+      if [ -d "frontend/build" ]; then
+        cp -r frontend/build/* backend/static/
+        echo "*** Copied frontend build to backend/static ***"
+      else
+        echo "*** Creating fallback index.html ***"
+        echo '<html><head><title>Keyword Processor</title></head><body><h1>Keyword Processor</h1><p>Backend is working, but frontend build failed. Please check logs.</p></body></html>' > backend/static/index.html
+      fi
+      echo "*** Checking final static directory ***"
+      ls -la backend/static
     startCommand: gunicorn backend.app:app
