@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: keyword-processor
+    name: applctn.com
     env: python
     buildCommand: |
       pip install -r requirements.txt
