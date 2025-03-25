@@ -326,7 +326,7 @@ const KeywordProcessorApp = () => {
       
       <Box component="footer" sx={{ mt: 6, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          © 2025 ptnrshp  - All Rights Reserved
+          © 2025 ptnrshp - All Rights Reserved
         </Typography>
       </Box>
     </Container>
