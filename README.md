@@ -1,3 +1,7 @@
+## License
+
+[MIT License](LICENSE)
+
 # Keyword Processor Application WIP
 
 A web application that processes CSV files by filtering out rows containing specific negative keywords and combining the results into a single Excel file.
@@ -88,30 +92,28 @@ http://localhost:5000
 - Add negative keywords in the right panel
 - Type one keyword per line for bulk input
 - Click "Add Keywords" to add them to the filter list
-- Click the "x" on any keyword chip to remove it
+- Click the "x" on any keyword cute choice chips to remove it
 - Use "Clear All" to remove all keywords
 
-### 3. Process Files
+### 3. Trust the Process SEO Tool
 
-- Click "Process Files" to start filtering and combining your data
+- Click "Trust the Process (Submit button)" to start filtering and combining your data
 - The application will filter out any rows where the "Keyword Phrase" column contains any of your negative keywords
-- The filtered data will be combined into a single Excel file
+- The application will filter out any duplicate rows where the "Keyword Phrase" matches
 - The file will automatically download when processing is complete
+- You can process thousands of files, my python is solid
 
 ## Troubleshooting
 
 - If files aren't uploading, ensure they are valid CSV files
-- If keywords aren't being applied, verify that your CSV files have a "Keyword Phrase" column
-- Check the browser console for any JavaScript errors
-- Check the Flask server logs for any backend errors
-- Make sure your virtual environment is activated before running the server
+- If it fails with one file that's beacuse the app is trash rn
 
 ## Development Notes
 
-- Backend: Flask Python web server with pandas for data processing
+- Backend: Flask Python web server
 - Frontend: React with Material UI components
-- Core functionality: CSV file processing, keyword filtering, Excel export
+- Core functionality: SEO for Dummys Online Edition | All Rights Reserved to Richard David Agama
 
-## License
 
-[MIT License](LICENSE)
+
+END OF READ
