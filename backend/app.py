@@ -107,41 +107,6 @@ def update_keywords():
 
 
 
-# Add this to your backend/app.py file to help debug
-@app.route('/debug-info')
-def debug_info():
-    """Return debugging information about paths and static files."""
-    import os
-    
-    # Get current directory
-    current_dir = os.getcwd()
-    
-    # Check static folder path
-    static_path = os.path.join(current_dir, app.static_folder) if app.static_folder else "No static folder"
-    static_exists = os.path.exists(static_path) if app.static_folder else False
-    
-    # Check if index.html exists
-    index_path = os.path.join(static_path, 'index.html') if app.static_folder else "No static folder"
-    index_exists = os.path.exists(index_path) if app.static_folder else False
-    
-    # List files in static folder if it exists
-    static_files = os.listdir(static_path) if static_exists else []
-    
-    debug_data = {
-        'current_directory': current_dir,
-        'static_folder_setting': app.static_folder,
-        'static_url_path_setting': app.static_url_path,
-        'full_static_path': static_path,
-        'static_folder_exists': static_exists,
-        'index_path': index_path,
-        'index_html_exists': index_exists,
-        'static_files': static_files
-    }
-    
-    return jsonify(debug_data)
-
-
-
 @app.route('/direct-html')
 def direct_html():
     """Return a simple HTML page directly from the Flask app."""
@@ -159,6 +124,80 @@ def direct_html():
     </html>
     '''
     return html
+
+
+# Get all tasks
+@app.route('/api/tasks', methods=['GET'])
+def get_tasks():
+    # In a real app, you would fetch from a database
+    # For now, return sample data
+    tasks = [
+        {
+            'id': 1,
+            'title': 'Sample Task',
+            'description': 'This is a sample task',
+            'priority': 'high',
+            'dueDate': '2025-04-15',
+            'completed': False
+        }
+    ]
+    return jsonify(tasks)
+
+# Create a new task
+@app.route('/api/tasks', methods=['POST'])
+def create_task():
+    task_data = request.get_json()
+    
+    # Validate required fields
+    if 'title' not in task_data:
+        return jsonify({'error': 'Title is required'}), 400
+    
+    # In a real app, you would save to a database
+    # For now, just return success with the data
+    return jsonify({
+        'success': True,
+        'message': 'Task created successfully',
+        'task': task_data
+    }), 201
+
+# Get a specific task
+@app.route('/api/tasks/<int:task_id>', methods=['GET'])
+def get_task(task_id):
+    # In a real app, you would fetch from a database
+    # For now, return sample data if id matches
+    if task_id == 1:
+        task = {
+            'id': 1,
+            'title': 'Sample Task',
+            'description': 'This is a sample task',
+            'priority': 'high',
+            'dueDate': '2025-04-15',
+            'completed': False
+        }
+        return jsonify(task)
+    return jsonify({'error': 'Task not found'}), 404
+
+# Update a task
+@app.route('/api/tasks/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    task_data = request.get_json()
+    
+    # In a real app, you would update in a database
+    # For now, just return success with the data
+    return jsonify({
+        'success': True,
+        'message': f'Task {task_id} updated successfully',
+        'task': task_data
+    })
+
+# Delete a task
+@app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    # In a real app, you would delete from a database
+    return jsonify({
+        'success': True,
+        'message': f'Task {task_id} deleted successfully'
+    })
 
 
 

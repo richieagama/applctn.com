@@ -13,6 +13,9 @@ const Navigation = () => {
           <Button color="inherit" component={RouterLink} to="/">
             Home
           </Button>
+          <Button color="inherit" component={RouterLink} to="/task/details">
+            Create Task
+          </Button>
           <Button color="inherit" component={RouterLink} to="/about">
             About
           </Button>
