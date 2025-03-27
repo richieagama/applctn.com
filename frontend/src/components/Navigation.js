@@ -7,14 +7,14 @@ const Navigation = () => {
     <AppBar position="static">
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Keyword Processor
+        Listing Optimization Builder
         </Typography>
         <Box>
           <Button color="inherit" component={RouterLink} to="/">
             Home
           </Button>
           <Button color="inherit" component={RouterLink} to="/task/details">
-            Create Task
+            Start Task
           </Button>
           <Button color="inherit" component={RouterLink} to="/about">
             About
