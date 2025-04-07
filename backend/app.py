@@ -25,17 +25,18 @@ def authenticate():
         {'WWW-Authenticate': 'Basic realm="Login Required"'}
     )
 
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
-
 @app.before_request
-def require_auth_for_all():
+def require_auth_for_api_and_root():
+    # Allow static assets through without auth
+    allowed_paths = ('/static/', '/favicon.ico', '.js', '.css', '.ico', '.png', '.jpg', '.svg')
+    if any(p in request.path for p in allowed_paths):
+        return
+
+    # Allow direct access to files in the static folder
+    static_file = os.path.join(app.static_folder, request.path.strip("/"))
+    if request.path != '/' and os.path.exists(static_file):
+        return
+
     auth = request.authorization
     if not auth or not check_auth(auth.username, auth.password):
         return authenticate()
@@ -46,7 +47,6 @@ negative_keywords = [
     "dimmable"
 ]
 
-# Compile regex pattern with word boundaries
 pattern = re.compile(r'\b(' + '|'.join(map(re.escape, negative_keywords)) + r')\b', re.IGNORECASE)
 
 @app.route('/upload', methods=['POST'])
@@ -94,7 +94,8 @@ def serve_index():
 
 @app.route('/<path:path>')
 def serve_static_files(path):
-    if os.path.exists(os.path.join(app.static_folder, path)):
+    full_path = os.path.join(app.static_folder, path)
+    if os.path.exists(full_path):
         return send_from_directory(app.static_folder, path)
     else:
         logging.warning(f"Requested path {path} not found. Serving index.html.")
