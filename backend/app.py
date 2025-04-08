@@ -135,7 +135,7 @@ def process_helium10_asins():
             viewport={"width": 1920, "height": 1080}
         )
         
-        # Load cookies from file
+        # Load cookies from file 
         #with open("helium10_auth_cookies.json", "r") as f:
         #    cookies = json.load(f)
         #context.add_cookies(cookies)
