@@ -31,5 +31,6 @@ WORKDIR /app/backend
 # Set environment variable for Playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Command to run the application
-CMD gunicorn --bind 0.0.0.0:$PORT app:app
+# Set appropriate gunicorn timeout and worker options
+CMD gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 1 app:app
+

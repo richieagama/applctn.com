@@ -138,7 +138,10 @@ def process_helium10_asins():
                 '--disable-gpu',
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
-                '--single-process'
+                '--single-process',
+                '--js-flags=--max-old-space-size=256',  # Limit JavaScript memory
+                '--memory-pressure-off',
+                '--disk-cache-size=0'
             ]
         )
         
