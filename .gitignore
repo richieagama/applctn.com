@@ -38,3 +38,5 @@ frontend/build/
 .vscode/
 *.swp
 *.swo
+
+helium10_auth_cookies.json

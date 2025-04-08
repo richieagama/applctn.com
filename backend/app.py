@@ -1,9 +1,14 @@
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
+from playwright.sync_api import sync_playwright
+
 import pandas as pd
 import os
 import re
 import logging
+import json
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 app = Flask(__name__, static_folder='static', static_url_path='')
@@ -11,8 +16,12 @@ app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
 # List of negative keywords
 negative_keywords = [
-    "dimmable"
+    "sunco","chandelier","home depot"
 ]
+
+# List of asins 
+asin_list = ["B0D9N92BFX","B0CWD455P1","B0CHVMH3J9"]
+
 # Compile regex pattern with word boundaries
 pattern = re.compile(r'\b(' + '|'.join(map(re.escape, negative_keywords)) + r')\b', re.IGNORECASE)
 @app.route('/upload', methods=['POST'])
@@ -76,6 +85,12 @@ def get_keywords():
     return jsonify({'keywords': negative_keywords})
 
 
+# Load Current ASINS
+@app.route('/get-asins', methods=['GET'])
+def get_asins():
+    return jsonify({'asins': asin_list})
+
+
 @app.route('/update-keywords', methods=['POST'])
 def update_keywords():
     global negative_keywords, pattern
@@ -104,7 +119,133 @@ def update_keywords():
     except Exception as e:
         logging.exception(f"Error updating keywords: {str(e)}")
         return jsonify({'error': f"Error updating keywords: {str(e)}"}), 500
+    
 
+@app.route('/start-cerebro-bot', methods=['POST'])
+def process_helium10_asins():
+    global asin_list, pattern
+
+    
+    with sync_playwright() as p:
+        # Launch browser
+        browser = p.chromium.launch(headless=True)
+        
+        # Create context
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
+        
+        # Load cookies from file
+        #with open("helium10_auth_cookies.json", "r") as f:
+        #    cookies = json.load(f)
+        #context.add_cookies(cookies)
+
+
+        # Load cookies from environment variable
+        try:
+            cookies_json = os.environ.get("HELIUM10_COOKIES")
+            if not cookies_json:
+                raise Exception("HELIUM10_COOKIES environment variable not set")
+            
+            cookies = json.loads(cookies_json)
+            context.add_cookies(cookies)
+        except Exception as e:
+            print(f"Error loading cookies: {e}")
+            # Handle the error appropriately        
+        
+        # Create page
+        page = context.new_page()
+        
+        try:
+
+            # Get the new asins from the request
+            
+            data = request.get_json()
+            if not data or 'asins' not in data:
+                return jsonify({'error': 'No asins provided in the request'}), 400
+            
+            new_asins = data['asins']
+            logging.info(f"ASINS Sent: {new_asins}")
+
+            # Validate that keywords is a list of strings
+            if not isinstance(new_asins, list) or not all(isinstance(k, str) for k in new_asins):
+                return jsonify({'error': 'Asins must be a list of strings'}), 400
+            
+            # Update the keywords list
+            asin_list = new_asins
+        
+            # Update the regex pattern
+            pattern = re.compile(r'\b(' + '|'.join(map(re.escape, asin_list)) + r')\b', re.IGNORECASE)
+
+            logging.info(f"Asins updated: {asin_list}")
+
+            # First navigation to ensure we're authenticated
+
+            print("Verifying authentication...")
+            page.goto("https://members.helium10.com/dashboard")
+            
+            # Check if login was successful
+            if "signin" in page.url:
+                print("Error: Authentication failed")
+                browser.close()
+                return False
+            
+            print("Authentication verified!")
+            
+            # Process each ASIN
+            for asin in asin_list:
+                try:
+                    print(f"Processing ASIN {asin}")
+                    
+                    # Navigate to Cerebro
+                    print(f"  Navigating to Cerebro...")
+                    page.goto('https://members.helium10.com/cerebro?accountId=2010218924', wait_until='networkidle')
+                    
+                    # Wait for the input field to be visible and type the ASIN
+                    print(f"  Entering ASIN...")
+                    page.wait_for_selector('.dAElQY')
+                    page.fill('.dAElQY', asin)
+                    page.keyboard.press('Enter')
+                    
+                    # Wait for and click the 'Get Keywords' button
+                    print(f"  Clicking Get Keywords button...")
+                    page.wait_for_selector('#CerebroSearchButtons button[data-testid="getkeywords"]')
+                    page.click('#CerebroSearchButtons button[data-testid="getkeywords"]')
+                    
+                    # Wait for results to load
+                    print(f"  Waiting for results...")
+                    page.wait_for_selector('button[data-testid="exportdata"]', timeout=60000) # 60s timeout
+                    
+                    # Wait for and click the 'Export Data' button
+                    print(f"  Clicking Export Data button...")
+                    page.click('button[data-testid="exportdata"]')
+                    
+                    # Wait for and click the 'CSV Export' option
+                    print(f"  Selecting CSV export...")
+                    page.wait_for_selector('div[data-testid="csv"]')
+                    
+                    # Set up download expectation before clicking
+                    with page.expect_download() as download_info:
+                        page.click('div[data-testid="csv"]')
+                    
+                    # Handle the download
+                    download = download_info.value
+                    download_path = f"{asin}_export.csv"
+                    download.save_as(download_path)
+                    
+                    print(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
+                    
+                except Exception as e:
+                    print(f"× Error processing ASIN {asin}: {e}")
+            
+            print("All ASINs processed!")
+            browser.close()
+            return True
+            
+        except Exception as e:
+            print(f"Error during processing: {e}")
+            browser.close()
+            return False
 
 
 @app.route('/direct-html')
