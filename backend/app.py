@@ -20,7 +20,7 @@ negative_keywords = [
 ]
 
 # List of asins 
-asin_list = ["B0D9N92BFX","B0CWD455P1","B0CHVMH3J9"]
+asin_list = ["B09D1LMDN2"]
 
 # Compile regex pattern with word boundaries
 pattern = re.compile(r'\b(' + '|'.join(map(re.escape, negative_keywords)) + r')\b', re.IGNORECASE)
