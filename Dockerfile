@@ -1,29 +1,34 @@
-FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
+# Use Node.js as base image since we need it for the frontend
+FROM node:18 AS frontend-builder
 
+# Set working directory
 WORKDIR /app
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy backend and frontend code
+# Copy frontend files and build
 COPY frontend ./frontend
-COPY backend ./backend
-
-# Build frontend
 WORKDIR /app/frontend
 RUN npm install
 RUN npm run build
 
-# Create static directory and copy frontend build files
-WORKDIR /app
-RUN mkdir -p backend/static
-RUN cp -r frontend/build/* backend/static/
+# Switch to Playwright image for Python/backend
+FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
 
-# Set working directory to backend for running the app
+WORKDIR /app
+
+# Copy Python requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend code
+COPY backend ./backend
+
+# Copy built frontend from the first stage
+COPY --from=frontend-builder /app/frontend/build ./backend/static
+
+# Set working directory to backend
 WORKDIR /app/backend
 
-# Set environment variable to run in headless mode
+# Set environment variable for Playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Command to run the application
