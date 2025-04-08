@@ -3,3 +3,4 @@ flask-cors
 pandas
 openpyxl
 gunicorn
+playwright==1.40.0
