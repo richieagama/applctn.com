@@ -128,7 +128,19 @@ def process_helium10_asins():
     
     with sync_playwright() as p:
         # Launch browser
-        browser = p.chromium.launch(headless=True)
+        #browser = p.chromium.launch(headless=True)
+
+
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--single-process'
+            ]
+        )
         
         # Create context
         context = browser.new_context(
