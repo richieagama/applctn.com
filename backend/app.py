@@ -20,7 +20,7 @@ negative_keywords = [
 ]
 
 # List of asins 
-asin_list = ["B09D1LMDN2"]
+asin_list = ["B0D9N92BFX","B0CWD455P1","B0CHVMH3J9"]
 
 # Compile regex pattern with word boundaries
 pattern = re.compile(r'\b(' + '|'.join(map(re.escape, negative_keywords)) + r')\b', re.IGNORECASE)
@@ -128,19 +128,7 @@ def process_helium10_asins():
     
     with sync_playwright() as p:
         # Launch browser
-        #browser = p.chromium.launch(headless=True)
-
-
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--single-process'  # Critical for memory-constrained environments
-            ]
-        )        
+        browser = p.chromium.launch(headless=True)
         
         # Create context
         context = browser.new_context(
