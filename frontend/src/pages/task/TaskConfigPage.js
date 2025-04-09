@@ -84,6 +84,18 @@ const TaskConfigPage = () => {
     }
   };
 
+  //get the files
+  const handleDownload = async () => {
+        // Create a download link
+        const downloadLink = document.createElement('a');
+        downloadLink.href = '/download-exports';
+        downloadLink.download = 'exports.zip'; // This name is overridden by the server
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+
+  };
+
   // Handle form submission
   const handleSubmit = async () => {
 
@@ -112,34 +124,11 @@ const TaskConfigPage = () => {
         setNegativeKeywords(asinData.asins);
       }
   
-      // Then, process the files
-      /*
-      const formData = new FormData();
-      files.forEach(file => {
-        formData.append('files', file);
-      });
-      */
-  /*
-      const response = await fetch('/upload', {
-        method: 'POST',
-        body: formData,
-      });
-  */
+
       if (botResponse.ok) {
-        /*
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'combined_spreadsheet.xlsx';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        setUploadStatus({ severity: 'success', message: 'Files processed successfully!' });
-        setFiles([]);
-    */    
+
+        //send files here??
+   
       } else {
         const errorData = await botResponse.json();
         setUploadStatus({ severity: 'error', message: errorData.error || 'Failed to process files' });
@@ -240,6 +229,19 @@ const TaskConfigPage = () => {
                               {isUploading ? 'Processing...' : 'Get Cerebro Reports'}
                             </Button>
                           </Box>
+
+
+                          {/* Process button */}
+                          <Box sx={{ mt: 3 }}>
+                            <Button
+                              variant="contained"
+                              fullWidth
+                              onClick={handleSubmit}
+                              startIcon={isUploading ? <CircularProgress size={20} color="inherit" /> : null}
+                            >
+                              {isUploading ? 'Processing...' : 'Get Cerebro Reports'}
+                            </Button>
+                          </Box>                          
 
               
             </Paper>

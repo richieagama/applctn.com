@@ -8,6 +8,13 @@ import re
 import logging
 import json
 
+from io import BytesIO
+import zipfile
+from datetime import datetime
+
+EXPORT_DIR = os.path.join(os.getcwd(), 'exports')
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -245,7 +252,7 @@ def process_helium10_asins():
                     
                     # Handle the download
                     download = download_info.value
-                    download_path = f"{asin}_export.csv"
+                    download_path = os.path.join(EXPORT_DIR, f"{asin}_export.csv")
                     download.save_as(download_path)
                     
                     print(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
@@ -280,6 +287,39 @@ def direct_html():
     </html>
     '''
     return html
+
+
+@app.route('/download-exports', methods=['GET'])
+def download_exports():
+    try:
+        # Get a list of the CSV files
+        csv_files = [f for f in os.listdir(EXPORT_DIR) if f.endswith('_export.csv')]
+        
+        if not csv_files:
+            return jsonify({'error': 'No export files found'}), 404
+        
+        # Create a ZIP file in memory
+        memory_file = BytesIO()
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for csv_file in csv_files:
+                file_path = os.path.join(EXPORT_DIR, csv_file)
+                zipf.write(file_path, csv_file)
+        
+        # Seek to the beginning of the BytesIO object
+        memory_file.seek(0)
+        
+        # Send the ZIP file as a response
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'helium10_exports_{timestamp}.zip'
+        )
+    
+    except Exception as e:
+        logging.exception(f"Error creating ZIP file: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 # Get all tasks
