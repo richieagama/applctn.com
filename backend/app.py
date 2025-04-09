@@ -169,11 +169,43 @@ def process_helium10_asins():
             if not cookies_json:
                 raise Exception("HELIUM10_COOKIES environment variable not set")
             
+            print(f"cookie: {cookies_json}")
             cookies = json.loads(cookies_json)
             context.add_cookies(cookies)
         except Exception as e:
             print(f"Error loading cookies: {e}")
-            # Handle the error appropriately        
+            # Handle the error appropriately
+        
+        
+        
+        # 
+        # try:
+        #     cookies_json = os.environ.get("HELIUM10_COOKIES")
+        #     if not cookies_json:
+        #         raise Exception("HELIUM10_COOKIES environment variable not set")
+            
+        #     print(f"Raw cookie string: {cookies_json[:100]}...")  # Print first 100 chars
+            
+        #     # Try to parse the JSON
+        #     cookies = json.loads(cookies_json)
+            
+        #     # Debug the parsed structure
+        #     print(f"Parsed cookies count: {len(cookies)}")
+        #     if len(cookies) > 0:
+        #         print(f"First cookie keys: {list(cookies[0].keys())}")
+            
+        #     # Check if required fields are present
+        #     required_fields = ['name', 'value', 'domain']
+        #     for cookie in cookies:
+        #         missing = [field for field in required_fields if field not in cookie]
+        #         if missing:
+        #             print(f"Cookie missing required fields: {missing}")
+            
+        #     context.add_cookies(cookies)
+        # except Exception as e:
+        #     print(f"Error loading cookies: {e}")
+        #     import traceback
+        #     traceback.print_exc()                
         
         # Create page
         page = context.new_page()
