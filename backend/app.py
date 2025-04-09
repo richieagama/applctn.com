@@ -265,11 +265,17 @@ def process_helium10_asins():
                     
                     # Wait for the input field to be visible and type the ASIN
                     print(f"  Entering ASIN...")
-                    logging.info(f"  Entering ASIN...")
+                    logging.info(f"  Entering ASIN...{asin}")
+
+                    page.screenshot(path=f"screenshot_01_{asin}.png")
+
 
                     page.wait_for_selector('.dAElQY')
                     page.fill('.dAElQY', asin)
                     page.keyboard.press('Enter')
+
+                    # Take screenshot for debugging
+                    page.screenshot(path=f"screenshot_02_{asin}.png")
                     
                     # Wait for and click the 'Get Keywords' button
                     print(f"  Clicking Get Keywords button...")
@@ -281,6 +287,9 @@ def process_helium10_asins():
                     # Wait for results to load
                     print(f"  Waiting for results...")
                     logging.info(f"  Waiting for results...")
+                    
+                    page.screenshot(path=f"screenshot_03_{asin}.png")
+
 
                     page.wait_for_selector('button[data-testid="exportdata"]', timeout=60000) # 60s timeout
                     
@@ -295,6 +304,9 @@ def process_helium10_asins():
                     logging.info(f"  Selecting CSV export...")
 
                     page.wait_for_selector('div[data-testid="csv"]')
+
+                    page.screenshot(path=f"screenshot_04_{asin}.png")
+
                     
                     # Set up download expectation before clicking
                     with page.expect_download() as download_info:
