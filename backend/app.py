@@ -204,46 +204,64 @@ def process_helium10_asins():
             # First navigation to ensure we're authenticated
 
             print("Verifying authentication...")
+            logging.info(f"Verifying authentication...")
+
             page.goto("https://members.helium10.com/dashboard")
             
             # Check if login was successful
             if "signin" in page.url:
                 print("Error: Authentication failed")
+                logging.info(f"Error: Authentication failed")
                 browser.close()
                 return False
             
             print("Authentication verified!")
+            logging.info(f"Authentication verified!")
+
             
             # Process each ASIN
             for asin in asin_list:
                 try:
                     print(f"Processing ASIN {asin}")
+                    logging.info(f"Processing ASIN {asin}")
                     
                     # Navigate to Cerebro
                     print(f"  Navigating to Cerebro...")
+                    logging.info(f"  Navigating to Cerebro...")
+                   
                     page.goto('https://members.helium10.com/cerebro?accountId=2010218924', wait_until='networkidle')
                     
                     # Wait for the input field to be visible and type the ASIN
                     print(f"  Entering ASIN...")
+                    logging.info(f"  Entering ASIN...")
+
                     page.wait_for_selector('.dAElQY')
                     page.fill('.dAElQY', asin)
                     page.keyboard.press('Enter')
                     
                     # Wait for and click the 'Get Keywords' button
                     print(f"  Clicking Get Keywords button...")
+                    logging.info(f"  Clicking Get Keywords button...")
+
                     page.wait_for_selector('#CerebroSearchButtons button[data-testid="getkeywords"]')
                     page.click('#CerebroSearchButtons button[data-testid="getkeywords"]')
                     
                     # Wait for results to load
                     print(f"  Waiting for results...")
+                    logging.info(f"  Waiting for results...")
+
                     page.wait_for_selector('button[data-testid="exportdata"]', timeout=60000) # 60s timeout
                     
                     # Wait for and click the 'Export Data' button
                     print(f"  Clicking Export Data button...")
+                    logging.info(f"  Clicking Export Data button...")
+
                     page.click('button[data-testid="exportdata"]')
                     
                     # Wait for and click the 'CSV Export' option
                     print(f"  Selecting CSV export...")
+                    logging.info(f"  Selecting CSV export...")
+
                     page.wait_for_selector('div[data-testid="csv"]')
                     
                     # Set up download expectation before clicking
