@@ -236,10 +236,9 @@ const TaskConfigPage = () => {
                             <Button
                               variant="contained"
                               fullWidth
-                              onClick={handleSubmit}
-                              startIcon={isUploading ? <CircularProgress size={20} color="inherit" /> : null}
+                              onClick={handleDownload}
                             >
-                              {isUploading ? 'Processing...' : 'Get Cerebro Reports'}
+                              {isUploading ? 'Processing...' : 'Download CSV Files'}
                             </Button>
                           </Box>                          
 
