@@ -169,7 +169,7 @@ def process_helium10_asins():
             if not cookies_json:
                 raise Exception("HELIUM10_COOKIES environment variable not set")
             
-            print(f"cookie: {cookies_json}")
+            #print(f"cookie: {cookies_json}")
             cookies = json.loads(cookies_json)
             context.add_cookies(cookies)
         except Exception as e:
@@ -306,18 +306,29 @@ def process_helium10_asins():
                     download.save_as(download_path)
                     
                     print(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
-                    
+                    logging.info(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
+
                 except Exception as e:
                     print(f"× Error processing ASIN {asin}: {e}")
+                    logging.info(f"× Error processing ASIN {asin}: {e}")
+
             
             print("All ASINs processed!")
+            logging.info("All ASINs processed!")
+
             browser.close()
-            return True
+            return jsonify({
+                'success': True,
+                'message': 'All ASINs processed!',
+            }), 201
             
         except Exception as e:
             print(f"Error during processing: {e}")
             browser.close()
-            return False
+            return jsonify({
+                'success': True,
+                'message': 'Error during processing',
+            }), 201
 
 
 @app.route('/direct-html')
