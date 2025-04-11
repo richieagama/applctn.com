@@ -7,6 +7,7 @@ import os
 import re
 import logging
 import json
+import time
 
 from io import BytesIO
 import zipfile
@@ -131,13 +132,27 @@ def update_keywords():
 @app.route('/start-cerebro-bot', methods=['POST'])
 def process_helium10_asins():
     global asin_list, pattern
-
+    
+    # Ensure export directory exists in both local and Render environments
+    EXPORT_DIR = os.path.join(os.getcwd(), 'exports')
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+    
+    # Create a screenshots directory for debugging
+    SCREENSHOTS_DIR = os.path.join(os.getcwd(), 'screenshots')
+    os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
+    
+    # Maximum number of retries per ASIN
+    MAX_RETRIES = 3
+    # Longer timeout values in milliseconds
+    NAVIGATION_TIMEOUT = 120000
+    SELECTOR_TIMEOUT = 90000
+    
+    # Track successful and failed ASINs
+    successful_asins = []
+    failed_asins = []
     
     with sync_playwright() as p:
         # Launch browser
-        #browser = p.chromium.launch(headless=True)
-
-
         browser = p.chromium.launch(
             headless=True,
             args=[
@@ -146,7 +161,7 @@ def process_helium10_asins():
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--single-process',
-                '--js-flags=--max-old-space-size=256',  # Limit JavaScript memory
+                '--js-flags=--max-old-space-size=256',
                 '--memory-pressure-off',
                 '--disk-cache-size=0'
             ]
@@ -157,11 +172,11 @@ def process_helium10_asins():
             viewport={"width": 1920, "height": 1080}
         )
         
+        # Try loading cookies from file first, fall back to environment variable
         # Load cookies from file 
-        #with open("helium10_auth_cookies.json", "r") as f:
+        # with open("helium10_auth_cookies.json", "r") as f:
         #    cookies = json.load(f)
-        #context.add_cookies(cookies)
-
+        # context.add_cookies(cookies)
 
         # Load cookies from environment variable
         try:
@@ -176,171 +191,222 @@ def process_helium10_asins():
             print(f"Error loading cookies: {e}")
             # Handle the error appropriately
         
-        
-        
-        # 
-        # try:
-        #     cookies_json = os.environ.get("HELIUM10_COOKIES")
-        #     if not cookies_json:
-        #         raise Exception("HELIUM10_COOKIES environment variable not set")
-            
-        #     print(f"Raw cookie string: {cookies_json[:100]}...")  # Print first 100 chars
-            
-        #     # Try to parse the JSON
-        #     cookies = json.loads(cookies_json)
-            
-        #     # Debug the parsed structure
-        #     print(f"Parsed cookies count: {len(cookies)}")
-        #     if len(cookies) > 0:
-        #         print(f"First cookie keys: {list(cookies[0].keys())}")
-            
-        #     # Check if required fields are present
-        #     required_fields = ['name', 'value', 'domain']
-        #     for cookie in cookies:
-        #         missing = [field for field in required_fields if field not in cookie]
-        #         if missing:
-        #             print(f"Cookie missing required fields: {missing}")
-            
-        #     context.add_cookies(cookies)
-        # except Exception as e:
-        #     print(f"Error loading cookies: {e}")
-        #     import traceback
-        #     traceback.print_exc()                
-        
         # Create page
         page = context.new_page()
         
         try:
-
             # Get the new asins from the request
-            
             data = request.get_json()
             if not data or 'asins' not in data:
                 return jsonify({'error': 'No asins provided in the request'}), 400
             
             new_asins = data['asins']
-            logging.info(f"ASINS Sent: {new_asins}")
-
-            # Validate that keywords is a list of strings
+            logging.info(f"ASINS to process: {new_asins}")
+            
+            # Validate that asins is a list of strings
             if not isinstance(new_asins, list) or not all(isinstance(k, str) for k in new_asins):
                 return jsonify({'error': 'Asins must be a list of strings'}), 400
             
-            # Update the keywords list
+            # Update the asins list
             asin_list = new_asins
-        
-            # Update the regex pattern
             pattern = re.compile(r'\b(' + '|'.join(map(re.escape, asin_list)) + r')\b', re.IGNORECASE)
-
-            logging.info(f"Asins updated: {asin_list}")
-
+            
             # First navigation to ensure we're authenticated
-
             print("Verifying authentication...")
-            logging.info(f"Verifying authentication...")
-
-            page.goto("https://members.helium10.com/dashboard")
+            logging.info("Verifying authentication...")
+            
+            # Take screenshot of initial state
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"1_initial_state_{timestamp}.png"))
+            
+            page.goto("https://members.helium10.com/dashboard", timeout=NAVIGATION_TIMEOUT)
+            
+            # Take screenshot after navigation
+            page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"2_auth_check_{timestamp}.png"))
             
             # Check if login was successful
             if "signin" in page.url:
                 print("Error: Authentication failed")
-                logging.info(f"Error: Authentication failed")
+                logging.error("Authentication failed")
+                page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"auth_failed_{timestamp}.png"))
                 browser.close()
-                return False
+                return jsonify({
+                    'success': False,
+                    'message': 'Authentication failed',
+                    'failed_asins': asin_list
+                }), 401
             
             print("Authentication verified!")
-            logging.info(f"Authentication verified!")
-
+            logging.info("Authentication verified!")
             
-            # Process each ASIN
+            # Process each ASIN with retries
             for asin in asin_list:
-                try:
-                    print(f"Processing ASIN {asin}")
-                    logging.info(f"Processing ASIN {asin}")
-                    
-                    # Navigate to Cerebro
-                    print(f"  Navigating to Cerebro...")
-                    logging.info(f"  Navigating to Cerebro...")
-                   
-                    page.goto('https://members.helium10.com/cerebro?accountId=2010218924', wait_until='networkidle')
-                    
-                    # Wait for the input field to be visible and type the ASIN
-                    print(f"  Entering ASIN...")
-                    logging.info(f"  Entering ASIN...{asin}")
-
-                    page.screenshot(path=f"screenshot_01_{asin}.png")
-
-
-                    page.wait_for_selector('.dAElQY')
-                    page.fill('.dAElQY', asin)
-                    page.keyboard.press('Enter')
-
-                    # Take screenshot for debugging
-                    page.screenshot(path=f"screenshot_02_{asin}.png")
-                    
-                    # Wait for and click the 'Get Keywords' button
-                    print(f"  Clicking Get Keywords button...")
-                    logging.info(f"  Clicking Get Keywords button...")
-
-                    page.wait_for_selector('#CerebroSearchButtons button[data-testid="getkeywords"]')
-                    page.click('#CerebroSearchButtons button[data-testid="getkeywords"]')
-                    
-                    # Wait for results to load
-                    print(f"  Waiting for results...")
-                    logging.info(f"  Waiting for results...")
-                    
-                    page.screenshot(path=f"screenshot_03_{asin}.png")
-
-
-                    page.wait_for_selector('button[data-testid="exportdata"]', timeout=60000) # 60s timeout
-                    
-                    # Wait for and click the 'Export Data' button
-                    print(f"  Clicking Export Data button...")
-                    logging.info(f"  Clicking Export Data button...")
-
-                    page.click('button[data-testid="exportdata"]')
-                    
-                    # Wait for and click the 'CSV Export' option
-                    print(f"  Selecting CSV export...")
-                    logging.info(f"  Selecting CSV export...")
-
-                    page.wait_for_selector('div[data-testid="csv"]')
-
-                    page.screenshot(path=f"screenshot_04_{asin}.png")
-
-                    
-                    # Set up download expectation before clicking
-                    with page.expect_download() as download_info:
-                        page.click('div[data-testid="csv"]')
-                    
-                    # Handle the download
-                    download = download_info.value
-                    download_path = os.path.join(EXPORT_DIR, f"{asin}_export.csv")
-                    download.save_as(download_path)
-                    
-                    print(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
-                    logging.info(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
-
-                except Exception as e:
-                    print(f"× Error processing ASIN {asin}: {e}")
-                    logging.info(f"× Error processing ASIN {asin}: {e}")
-
+                retry_count = 0
+                success = False
+                
+                while retry_count < MAX_RETRIES and not success:
+                    try:
+                        if retry_count > 0:
+                            print(f"Retry #{retry_count} for ASIN {asin}")
+                            logging.info(f"Retry #{retry_count} for ASIN {asin}")
+                        else:
+                            print(f"Processing ASIN {asin}")
+                            logging.info(f"Processing ASIN {asin}")
+                        
+                        # Navigate to Cerebro
+                        print(f"  Navigating to Cerebro...")
+                        logging.info(f"  Navigating to Cerebro for {asin}...")
+                       
+                        page.goto('https://members.helium10.com/cerebro?accountId=2010218924', 
+                                wait_until='networkidle', timeout=NAVIGATION_TIMEOUT)
+                        
+                        # Screenshot after navigation to Cerebro
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"3_{asin}_cerebro_page_try{retry_count}.png"))
+                        
+                        # Wait for the input field to be visible and type the ASIN
+                        print(f"  Entering ASIN...")
+                        logging.info(f"  Entering ASIN {asin}...")
+                        
+                        page.wait_for_selector('.dAElQY', timeout=SELECTOR_TIMEOUT)
+                        page.fill('.dAElQY', asin)
+                        
+                        # Screenshot after filling ASIN
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"4_{asin}_filled_try{retry_count}.png"))
+                        
+                        page.keyboard.press('Enter')
+                        time.sleep(2)  # Small delay after Enter
+                        
+                        # Screenshot after pressing Enter
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"5_{asin}_after_enter_try{retry_count}.png"))
+                        
+                        # Wait for and click the 'Get Keywords' button
+                        print(f"  Clicking Get Keywords button...")
+                        logging.info(f"  Clicking Get Keywords button for {asin}...")
+                        
+                        # Try to get keywords with a longer timeout
+                        keywords_button = page.wait_for_selector(
+                            '#CerebroSearchButtons button[data-testid="getkeywords"]',
+                            timeout=SELECTOR_TIMEOUT
+                        )
+                        
+                        # Screenshot before clicking keywords button
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"6_{asin}_before_keywords_try{retry_count}.png"))
+                        
+                        keywords_button.click()
+                        
+                        # Wait for results to load
+                        print(f"  Waiting for results...")
+                        logging.info(f"  Waiting for results for {asin}...")
+                        
+                        # Screenshot after clicking keywords button
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"7_{asin}_after_keywords_try{retry_count}.png"))
+                        
+                        # Wait for export button with extra long timeout
+                        export_button = page.wait_for_selector(
+                            'button[data-testid="exportdata"]', 
+                            timeout=SELECTOR_TIMEOUT * 2  # Double timeout for results
+                        )
+                        
+                        # Screenshot after results loaded
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"8_{asin}_results_loaded_try{retry_count}.png"))
+                        
+                        # Wait for and click the 'Export Data' button
+                        print(f"  Clicking Export Data button...")
+                        logging.info(f"  Clicking Export Data button for {asin}...")
+                        export_button.click()
+                        
+                        # Screenshot after clicking export
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"9_{asin}_after_export_click_try{retry_count}.png"))
+                        
+                        # Wait for and click the 'CSV Export' option
+                        print(f"  Selecting CSV export...")
+                        logging.info(f"  Selecting CSV export for {asin}...")
+                        
+                        csv_button = page.wait_for_selector('div[data-testid="csv"]', timeout=SELECTOR_TIMEOUT)
+                        
+                        # Screenshot before clicking CSV
+                        page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"10_{asin}_before_csv_try{retry_count}.png"))
+                        
+                        # Set up download expectation before clicking
+                        with page.expect_download(timeout=SELECTOR_TIMEOUT) as download_info:
+                            csv_button.click()
+                        
+                        # Handle the download
+                        download = download_info.value
+                        download_path = os.path.join(EXPORT_DIR, f"{asin}_export.csv")
+                        download.save_as(download_path)
+                        
+                        # Verify file exists and has content
+                        if os.path.exists(download_path) and os.path.getsize(download_path) > 0:
+                            print(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
+                            logging.info(f"✓ ASIN {asin} processed successfully. Downloaded to {download_path}")
+                            
+                            success = True
+                            successful_asins.append(asin)
+                        else:
+                            raise Exception(f"Download file is empty or missing for {asin}")
+                        
+                    except Exception as e:
+                        retry_count += 1
+                        error_msg = f"Error processing ASIN {asin} (attempt {retry_count}/{MAX_RETRIES}): {e}"
+                        print(f"× {error_msg}")
+                        logging.error(error_msg)
+                        
+                        # Take an error screenshot
+                        try:
+                            page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"error_{asin}_try{retry_count}.png"))
+                        except:
+                            pass
+                        
+                        # If we've reached max retries, add to failed list
+                        if retry_count >= MAX_RETRIES:
+                            failed_asins.append({
+                                "asin": asin,
+                                "error": str(e)
+                            })
+                        
+                        # Add a delay before retry
+                        time.sleep(5)
+                
+            # Print summary of results
+            print(f"ASINs processed successfully: {successful_asins}")
+            print(f"ASINs that failed: {failed_asins}")
+            logging.info(f"ASINs processed successfully: {successful_asins}")
+            logging.info(f"ASINs that failed: {failed_asins}")
             
-            print("All ASINs processed!")
-            logging.info("All ASINs processed!")
-
+            # Final screenshot
+            page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"final_state_{timestamp}.png"))
+            
             browser.close()
             return jsonify({
-                'success': True,
-                'message': 'All ASINs processed!',
-            }), 201
+                'success': len(failed_asins) == 0,
+                'message': 'Processing completed',
+                'successful_asins': successful_asins,
+                'failed_asins': [f["asin"] for f in failed_asins],
+                'error_details': failed_asins,
+                'total_successful': len(successful_asins),
+                'total_failed': len(failed_asins),
+                'screenshots_dir': SCREENSHOTS_DIR,
+                'exports_dir': EXPORT_DIR
+            }), 200
             
         except Exception as e:
             print(f"Error during processing: {e}")
+            logging.error(f"Error during processing: {e}")
+            
+            # Take final error screenshot
+            try:
+                page.screenshot(path=os.path.join(SCREENSHOTS_DIR, f"fatal_error_{timestamp}.png"))
+            except:
+                pass
+                
             browser.close()
             return jsonify({
-                'success': True,
-                'message': 'Error during processing',
-            }), 201
+                'success': False,
+                'message': f'Error during processing: {str(e)}',
+                'successful_asins': successful_asins,
+                'failed_asins': [a for a in asin_list if a not in successful_asins]
+            }), 500
 
 
 @app.route('/direct-html')
